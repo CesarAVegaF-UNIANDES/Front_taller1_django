@@ -1,4 +1,4 @@
-from app.main import bestArtist, getBestTrack, getUsurioArtists, getUsurioTracks, isUser, getDataUser
+from app.main import bestArtist, getBestTrack, getUsurioArtists, getUsurioTracks, isUser, getDataUser, getPredicciones
 from django.shortcuts import render
 
 
@@ -22,7 +22,8 @@ def recomendacionesView(request):
     global userIDGlobal
     getUsurioArtists(userIDGlobal)
     getUsurioTracks(userIDGlobal)
-    return render(request, '../templates/recomendaciones.html')
+    predicciones = getPredicciones(userIDGlobal)
+    return render(request, '../templates/recomendaciones.html', {"predicciones" : predicciones})
 
 
 def popularesView(request):

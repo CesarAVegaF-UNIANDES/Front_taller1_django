@@ -1,9 +1,13 @@
+from collections import defaultdict
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib import pyplot as plt
+from surprise import dump
 
 df = pd.read_parquet("app/dataset/lastfm_processed_final.parquet")
+model = dump.load("app/dataset/modelo")
 
 
 def cargar_datos():
@@ -92,3 +96,36 @@ def getBestTrack():
     sns.barplot(x="track_name", y="valores", data=track_name.head(20))
     plt.xticks(rotation=70)
     plt.savefig('static/img/canciones.png')
+
+
+def getPredicciones(user_id):
+    predictions = model.test(df[df['user_id'] == user_id])
+    top = get_top_n(predictions)
+    return top
+
+# formula tomada de la documentación de surprise
+def get_top_n(predictions, n=10):
+    """Return the top-N recommendation for each user from a set of predictions.
+
+    Args:
+        predictions(list of Prediction objects): The list of predictions, as
+            returned by the test method of an algorithm.
+        n(int): The number of recommendation to output for each user. Default
+            is 10.
+
+    Returns:
+    A dict where keys are user (raw) ids and values are lists of tuples:
+        [(raw item id, rating estimation), ...] of size n.
+    """
+
+    # First map the predictions to each user.
+    top_n = defaultdict(list)
+    for uid, iid, true_r, est, _ in predictions:
+        top_n[uid].append((iid, est))
+
+    # Then sort the predictions for each user and retrieve the k highest ones.
+    for uid, user_ratings in top_n.items():
+        user_ratings.sort(key=lambda x: x[1], reverse=True)
+        top_n[uid] = user_ratings[:n]
+
+    return top_n
