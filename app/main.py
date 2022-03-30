@@ -1,18 +1,18 @@
-from collections import defaultdict
-
 import pandas as pd
-import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib import pyplot as plt
-from surprise import dump
+from surprise import dump, Dataset, Reader
+from collections import defaultdict
+from surprise.model_selection import train_test_split
 
 df = pd.read_parquet("app/dataset/lastfm_processed_final.parquet")
-model = dump.load("app/dataset/modelo")
+x_df = pd.read_parquet("app/dataset/matriz_entrenamiento.parquet")
+model = dump.load("app/dataset/modelo")[1]
 
 
 def cargar_datos():
     global df
-    print(df.info(verbose=True, null_counts=True))
+    print(df.info(verbose=True))
     print("##################Datos Cargados####################")
 
 
@@ -99,9 +99,22 @@ def getBestTrack():
 
 
 def getPredicciones(user_id):
-    predictions = model.test(df[df['user_id'] == user_id])
-    top = get_top_n(predictions)
-    return top
+    global model
+    global x_df
+    reader = Reader(rating_scale=(0, 250))
+    # Se crea el dataset a partir del dataframe
+    df_temp = x_df[['user_id', 'artist_id', 'rating']]
+    df_temp = df_temp[df_temp['user_id'] == "user_000001"]
+    surprise_dataset = Dataset.load_from_df(df_temp, reader)
+
+    trainset, testset = train_test_split(surprise_dataset, test_size=.99)
+    predictions_model = model.test(testset)
+    top_n_model = get_top_n(predictions_model, n=5)
+    list_value = [v for k,v in top_n_model.items() if v!=top_n_model.default_factory()]
+    dict_temp = dict()
+    for i in range(0, 5):
+        dict_temp[i] = [df[df['artist_id'] == list_value[0][i][0]]["artist_name"].iloc[0], round(list_value[0][i][1],2) * 100]
+    return dict_temp
 
 # formula tomada de la documentación de surprise
 def get_top_n(predictions, n=10):
